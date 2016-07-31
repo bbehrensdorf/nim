@@ -1,0 +1,58 @@
+@CHARSET "UTF-8";
+
+@media ( min-width : 1200px) {
+	.container {
+		max-width: 970px;
+	}
+}
+
+body {
+	font-family: Arial, sans-serif;
+	margin-top: 70px;
+}
+
+#data {
+	display:none;
+}
+
+table.nim-field {
+	margin-left: auto;
+	margin-right: auto;
+}
+
+.well.nimview {
+	min-width: 50em;
+	text-align: center;
+}
+
+table.nim-field td {
+	height: 4em;
+	width: 4em;
+	/* order: 1px solid black; */
+	text-align: center;
+	color: #000000;
+	cursor: default;
+}
+
+#message {
+	width: 90%;
+	text-align: center;
+	margin-top: 20px;
+	font-size: 2rem;
+	margin-left: auto;
+	margin-right: auto;
+	min-height: 5.4em;
+}
+
+.nimbtn {
+	margin-top: 20px;
+}
+
+#btnSubmit {
+	width: 15rem;
+	
+}
+
+#customizeForm input[type=number] {
+} 
+
