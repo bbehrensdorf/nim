@@ -3,9 +3,7 @@
  */
 var currentPlayer = -1;
 var currentRow = -1;
-var oldRow = -1;
-var startCount = -1;
-var oldCount = -1;
+var previousCount = -1;
 var currentCount = -1;
 var ready = false;
 var gameOver = true;
@@ -40,14 +38,13 @@ function setGameOver(status) {
 }
 
 function setCurrentRow(value) {
-	if (value==-1) {
+	if (value == -1) {
 		$('#btnReset').prop('disabled', true);
 	} else {
 		$('#btnReset').prop('disabled', false);
 	}
-	currentRow=value;
+	currentRow = value;
 }
-
 
 function fillNimTable(rowValues) {
 	var theTable = document.getElementById("nimtable");
@@ -100,7 +97,7 @@ function initGame() {
 	$('btnBack').prop('disabled', true);
 }
 
-function doMove() {
+function modifyButtons() {
 	var btn = $("#btnSubmit");
 	if (currentPlayer == 2) {
 		btn.html("Computer zieht");
@@ -128,7 +125,8 @@ function onSuccess(data, status) {
 	case "confirm_humanmove":
 		outMessage = obj.message;
 		currentPlayer = obj.player;
-		doMove();
+		rowValues[obj.move[0]]=obj.move[1];
+		modifyButtons();
 		if (obj.gameover) {
 			setGameOver(true);
 		}
@@ -137,8 +135,9 @@ function onSuccess(data, status) {
 	case "confirm_computermove":
 		outMessage = obj.message;
 		currentPlayer = obj.player;
+		rowValues[obj.move[0]]=obj.move[1];
 		fillNimRow(obj.move[0], obj.move[1]);
-		doMove();
+		modifyButtons();
 		if (obj.gameover) {
 			setGameOver(true);
 		}
@@ -173,9 +172,7 @@ function prepareRowForSubmitting(row) {
 		}
 	}
 	setCurrentRow(-1);
-	oldRow = -1;
-	startCount = -1;
-	oldCount = -1;
+	previousCount = -1;
 	currentCount = -1;
 }
 
@@ -206,17 +203,19 @@ $(function() {
 								$(this).parent());
 						var theTableCells = document.getElementById("nimtable").rows[row].cells;
 						var cellContent = theTableCells[col].innerHTML;
-						if ((cellContent != "")
-								&& (currentRow == -1 || row == currentRow)) {
+						if ((cellContent != "") // Klick auf eine "besetzte"
+												// Tabellenzelle (td)
+								&& (currentRow == -1 || row == currentRow))
+						// entweder wurde vorher noch keine Reihe gewählt oder
+						// Klick erfolgte auf die "aktuell gewählte" Reihe
+						{
 							if (currentRow == -1) {
-								startCount = rowValues[row];
-								oldCount = startCount;
+								previousCount = rowValues[row];
 								colorizeRow(row, enhancedColor);
 							} else {
-								oldCount = currentCount;
+								previousCount = currentCount;
 							}
 							currentCount = col - 1;
-							oldRow = currentRow;
 							setCurrentRow(row);
 							for (var i = col; i < theTableCells.length; i++) {
 								if (theTableCells[i].innerHTML == "") {
@@ -229,7 +228,7 @@ $(function() {
 								message = "Du möchtest Reihe "
 										+ (currentRow + 1) + " leeren.";
 							} else {
-								var weg = oldCount - currentCount;
+								var weg = previousCount - currentCount;
 								var message = "Du möchtest in der "
 										+ (currentRow + 1)
 										+ ". Reihe  "
@@ -265,7 +264,7 @@ $(function() {
 		}
 		if (currentRow >= 0) {
 			colorizeRow(currentRow, normalColor, true);
-			fillNimRow(currentRow, startCount);
+			fillNimRow(currentRow, previousCount);
 			setCurrentRow(-1);
 			currentCount = -1;
 			printMessage("Bitte in eine Reihe klicken!");
@@ -320,9 +319,8 @@ $(function() {
 	$('#btnBack').click(function() {
 		if (!gameOver) {
 			return;
-		} 
+		}
 		window.location.href = "/Nim";
 	});
-
 
 });
