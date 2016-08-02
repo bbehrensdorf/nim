@@ -202,7 +202,6 @@ public class NimController extends HttpServlet {
 				move = nim.randomMove();
 			}
 
-			// NimMove move = nim.randomMove();
 			int oldCount = nim.getCount(move.row);
 			row = move.row;
 			count = move.count;
