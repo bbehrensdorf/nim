@@ -1,5 +1,6 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8"
 	pageEncoding="UTF-8"%>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -33,7 +34,7 @@
 	<%
 		// Erstes hässliches Scriptlet
 		Integer numRows = -1;
-		Object numRowsObject = request.getAttribute("numRows");
+		Object numRowsObject = pageContext.getAttribute("rowCount", PageContext.SESSION_SCOPE);
 		if (numRowsObject != null && numRowsObject.getClass() == Integer.class) {
 			numRows = (Integer) numRowsObject;
 		} else {
@@ -42,7 +43,7 @@
 	%>
 	<nav class="navbar navbar-inverse navbar-fixed-top">
 		<div class="container">
-<!-- 			<div class="navbar-header">
+			<!-- 			<div class="navbar-header">
 				<button type="button" class="navbar-toggle collapsed"
 					data-toggle="collapse" data-target="#navbar" aria-expanded="false"
 					aria-controls="navbar">
@@ -51,13 +52,14 @@
 						class="icon-bar"></span>
 				</button>
 				<a class="navbar-brand" href="#">Nim</a>
-			</div>  -->	
-		<div id="navbar" class="collapse navbar-collapse">
-<!-- 				<ul class="nav navbar-nav">
+			</div>  -->
+			<div id="navbar" class="collapse navbar-collapse">
+				<!-- 				<ul class="nav navbar-nav">
 					<li class="active"><a href="#">Home</a></li>
 					<li><a href="#about">Über</a></li>
 				</ul>
- -->			</div>
+ -->
+			</div>
 			<!--/.nav-collapse -->
 		</div>
 	</nav>
@@ -68,14 +70,16 @@
 			rechts von ihm werden entfernt.<br> Danach kannst du in der
 			gewählten Reihe noch weitere Steine entfernen. Andere Reihen sind
 			nicht mehr wählbar.<br> Wenn du Steine aus einer anderen Reihe
-			entfernen willst, klicke auf "Reihe zurücksetzen".<br> Wenn du mit diner Wahl
-			zufrieden bist, klicke auf "Zug ausführen".<br> Wer den letzten
-			Stein entfernt, also das Spielfeld leer macht, hat gewonnen. Viel
-			Glück!
+			entfernen willst, klicke auf "Reihe zurücksetzen".<br> Wenn du
+			mit diner Wahl zufrieden bist, klicke auf "Zug ausführen".<br>
+			Wer den letzten Stein entfernt, also das Spielfeld leer macht, hat
+			gewonnen. Viel Glück!
 		</p>
 		<p>
 			<strong>Gewählte Optionen: </strong>Anzahl Reihen:
-			<%=numRows%>, maximale Anzahl Steine pro Reihe: ${maxTokenCount}, Computer spielt ${computerBehaviour}, Zugvorschläge: ${suggestionSetting} 
+			${sessionScope.rowCount}, maximale Anzahl Steine pro Reihe:
+			${sessionScope.maxTokenCount}, Computer spielt
+			${computerBehaviourText}, Zugvorschläge: ${suggestionsText}
 		</p>
 		<div class="container">
 			<div class="nimview well">
@@ -87,16 +91,17 @@
 							out.println("\t\t\t\t\t\t<th scope=\"row\">" + (row + 1) + "</th>");
 							for (int col = 0; col < 10; col++) {
 								out.println("\t\t\t\t\t\t<td class=\"nim-cell\"></td>");
-							}
+	 						}
 							out.println("\t\t\t\t\t</tr>");
 						}
 					%>
 				</table>
 
 				<div class="alert alert-info" id="message"></div>
-				
+
 				<div>
-					<button type="button" id="btnReset" class="btn btn-primary nimbtn">Reihe zurücksetzen</button>
+					<button type="button" id="btnReset" class="btn btn-primary nimbtn">Reihe
+						zurücksetzen</button>
 					<button type="button" id="btnSubmit" class="btn btn-primary nimbtn">Zug
 						ausführen</button>
 				</div>
@@ -107,6 +112,9 @@
 
 			</div>
 		</div>
+		<footer>
+			<p id="computerId"></p>
+		</footer>
 	</div>
 	<!-- /.container -->
 	<!-- Bootstrap core JavaScript

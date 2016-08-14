@@ -1,18 +1,15 @@
 package net.behrensdorf.nim;
 
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-
-import javax.json.Json;
-import javax.json.JsonArrayBuilder;
-import javax.json.JsonWriter;
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+
+import com.google.gson.Gson;
 
 /**
  * Servlet implementation class NimController
@@ -20,13 +17,51 @@ import javax.servlet.http.HttpServletResponse;
 @WebServlet("/Game")
 public class NimController extends HttpServlet {
 	private static final long serialVersionUID = 1L;
-	private Integer rowCount = 6;
-	private Integer maxTokenCount;
-	private Integer computerBehaviour = 1;
-	private Boolean suggestions = false;
-	private Nim nim;
 
-	private String getSuggestionMessage() {
+	class BagForNimView {
+		String action;
+		String message;
+		int[] values;
+		int[] move;
+		boolean gameover;
+		int player;
+		int hashCode;
+
+		BagForNimView(String controllerAction, boolean suggestions, Nim nim) {
+			NimMove move;
+			switch (controllerAction) {
+			case "init":
+				this.action = "init_nimtable";
+				this.values = nim.getRows();
+				this.player = 1;
+				break;
+			case "humanmove":
+				this.action = "confirm_humanmove";
+				move = nim.getLastMove();
+				this.move = new int[] { move.row, move.count };
+				;
+				this.player = 2;
+				break;
+
+			case "computermove":
+				this.action = "confirm_computermove";
+				move = nim.getLastMove();
+				this.move = new int[] { move.row, move.count };
+				;
+				this.player = 1;
+				break;
+
+			default:
+				break;
+			}
+			this.message = getMessage(controllerAction, suggestions, nim);
+			this.gameover = nim.isOver();
+			this.hashCode = nim.hashCode();
+
+		}
+	};
+
+	private static String getSuggestionMessage(Nim nim) {
 		String msg = "";
 		NimMove sMove = nim.suggestMove();
 		int sRow = sMove.row;
@@ -40,119 +75,16 @@ public class NimController extends HttpServlet {
 		return msg;
 	}
 
-	public String getComputerBehaviour() {
-		String result = "";
-		switch (computerBehaviour) {
-		case 1:
-			result = "intelligent";
-			break;
-		case 2:
-			result = "chaotisch";
-			break;
-		case 3:
-			result = "dumm";
-			break;
-		}
-
-		return result;
-	}
-
-	public String getSuggestionSetting() {
-		if (suggestions)
-			return "ja";
-		else
-			return "nein";
-	}
-
-	protected void doGet(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		RequestDispatcher dispatcher = request.getRequestDispatcher("nimView.jsp");
-
-		NimMessages.readGoodMessages(getServletContext().getRealPath("/resources/good_messages.txt"));
-		NimMessages.readBadMessages(getServletContext().getRealPath("/resources/bad_messages.txt"));
-		NimMessages.readStartMessages(getServletContext().getRealPath("/resources/start_messages.txt"));
-
-		String sTemp = request.getParameter("rowCount");
-		try {
-			rowCount = Integer.valueOf(sTemp);
-		} catch (NumberFormatException e) {
-			rowCount = 6;
-		}
-
-		request.setAttribute("numRows", rowCount);
-
-		sTemp = request.getParameter("tokenCount");
-		try {
-			maxTokenCount = Integer.valueOf(sTemp);
-		} catch (NumberFormatException e) {
-			maxTokenCount = 10;
-		}
-		request.setAttribute("maxTokenCount", maxTokenCount);
-
-		sTemp = request.getParameter("computerBehaviour");
-		try {
-			computerBehaviour = Integer.valueOf(sTemp);
-		} catch (NumberFormatException e) {
-			computerBehaviour = 1;
-		}
-
-		sTemp = request.getParameter("suggestions");
-		this.suggestions = false;
-		if (sTemp != null && sTemp.trim().equalsIgnoreCase("yes")) {
-			this.suggestions = true;
-		}
-
-		request.setAttribute("computerBehaviour", getComputerBehaviour());
-		request.setAttribute("suggestionSetting", getSuggestionSetting());
-		request.setAttribute("testMsg", NimMessages.getStartMessage());
-		dispatcher.forward(request, response);
-
-	}
-
-	protected void doPost(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		String action = request.getParameter("action");
-		Integer row = -1;
-		Integer count = -1;
+	private static String getMessage(String action, boolean suggestions, Nim nim) {
 		String message = "";
-		if (action == null)
-			action = "unknown";
-		JsonWriter jsonWriter;
 		switch (action) {
-		case "start":
-			doGet(request, response);
-			break;
 		case "init":
-			nim = new Nim(rowCount, maxTokenCount);
-			int[] rows = nim.getRows();
 			message = NimMessages.getStartMessage();
 			if (suggestions && nim.isWinSituation()) {
-				message += "<br>" + "Zugvorschlag: " + getSuggestionMessage();
-			}
-
-			response.setCharacterEncoding("UTF-8");
-			//@formatter:off
-			JsonArrayBuilder arr = Json.createArrayBuilder();
-			for (int i : rows)
-				arr.add(i);
-			try (StringWriter stWriter = new StringWriter()) {
-				jsonWriter = Json.createWriter(stWriter);
-				jsonWriter.writeObject(Json.createObjectBuilder()
-					.add("action", "init_nimtable")
-					.add("values", arr)
-					.add("message", message).add("player", 1)
-					.build());
-				//@formatter:on
-				jsonWriter.close();
-				try (PrintWriter out = response.getWriter()) {
-					out.println(stWriter.toString());
-				}
+				message += "<br>" + "Zugvorschlag: " + getSuggestionMessage(nim);
 			}
 			break;
 		case "humanmove":
-			row = Integer.valueOf(request.getParameter("row"));
-			count = Integer.valueOf(request.getParameter("count"));
-			nim.doMove(new NimMove(row, count));
 			if (nim.isOver()) {
 				message = "Du hast den letzten Stein genommen und bist deshalb der Sieger.";
 				message += "<br>HERZLICHEN GLÜCKWUNSCH!!!";
@@ -164,49 +96,14 @@ public class NimController extends HttpServlet {
 							+ "<br>Aber nun ist erstmal der Computer wieder dran.<br>(<span class=\"small\">Klick auf \"Computer zieht\"</span>)";
 				}
 			}
-			;
-			response.setCharacterEncoding("UTF-8");
-			//@formatter:off
-			try (StringWriter stWriter = new StringWriter()) {
-				jsonWriter = Json.createWriter(stWriter);
-				jsonWriter.writeObject(Json.createObjectBuilder()
-					.add("action", "confirm_humanmove")
-					.add("move", Json.createArrayBuilder()
-							.add(row)
-							.add(count))
-					.add("message", message)
-					.add("player", 2)
-					.add("gameover", nim.isOver())
-					.build());
-				//@formatter:on
-				jsonWriter.close();
-				try (PrintWriter out = response.getWriter()) {
-					out.println(stWriter.toString());
-				}
-			}
-
 			break;
 		case "computermove":
-			NimMove move = null;
-			switch (computerBehaviour) {
-			case 1:
-				move = nim.suggestMove();
-				break;
-			case 2:
-				move = nim.randomMove();
-				break;
-			case 3:
-				move = nim.suggestBadMove();
-				break;
-			default:
-				move = nim.randomMove();
-			}
-
-			int oldCount = nim.getCount(move.row);
-			row = move.row;
-			count = move.count;
+			NimMove move = nim.getLastMove();
+			int oldCount = nim.getOldValueOflastMove().count;
+			int row = move.row;
+			int count = move.count;
 			int weg = oldCount - count;
-			nim.doMove(move);
+
 			message = "Der Computer nimmt aus der " + (row + 1) + ". Reihe "
 					+ (weg == 1 ? "einen Stein" : weg + " Steine") + ".<br>";
 			if (nim.isOver()) {
@@ -224,7 +121,7 @@ public class NimController extends HttpServlet {
 					message += "Es bleiben " + count + " Steine liegen.";
 				}
 				if (suggestions && nim.isWinSituation()) {
-					message += "<br>Jetzt bist du dran. Vorschlag: " + getSuggestionMessage();
+					message += "<br>Jetzt bist du dran. Vorschlag: " + getSuggestionMessage(nim);
 
 				} else {
 					message += "<br>Jetzt bist du dran.";
@@ -232,31 +129,168 @@ public class NimController extends HttpServlet {
 				}
 
 			}
-			response.setCharacterEncoding("UTF-8");
-			//@formatter:off
-			try (StringWriter stWriter = new StringWriter()) {
-				jsonWriter = Json.createWriter(stWriter);
-				jsonWriter.writeObject(Json.createObjectBuilder()
-					.add("action", "confirm_computermove")
-					.add("move", Json.createArrayBuilder()
-							.add(row)
-							.add(count))
-					.add("message", message)
-					.add("player", 1)
-					.add("gameover", nim.isOver())
-					.build());
-				//@formatter:on
-				jsonWriter.close();
-				try (PrintWriter out = response.getWriter()) {
-					out.println(stWriter.toString());
-				}
+
+			break;
+		}
+		return message;
+	}
+
+	public static String getComputerBehaviourText(int computerBehaviour) {
+		String result = "";
+		switch (computerBehaviour) {
+		case 1:
+			result = "intelligent";
+			break;
+		case 2:
+			result = "chaotisch";
+			break;
+		case 3:
+			result = "dumm";
+			break;
+		}
+
+		return result;
+	}
+
+	public static String getSuggestionsText(boolean suggestions) {
+		if (suggestions)
+			return "ja";
+		else
+			return "nein";
+	}
+
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+
+		RequestDispatcher dispatcher = request.getRequestDispatcher("nimView.jsp");
+		HttpSession session = request.getSession();
+
+		Integer rowCount = 6;
+		Integer maxTokenCount;
+		Integer computerBehaviour = 1;
+		Boolean suggestions = false;
+
+		NimMessages.readGoodMessages(getServletContext().getRealPath("/resources/good_messages.txt"));
+		NimMessages.readBadMessages(getServletContext().getRealPath("/resources/bad_messages.txt"));
+		NimMessages.readStartMessages(getServletContext().getRealPath("/resources/start_messages.txt"));
+
+		String sTemp = request.getParameter("rowCount");
+
+		try {
+			rowCount = Integer.valueOf(sTemp);
+		} catch (NumberFormatException e) {
+			rowCount = 6;
+		}
+
+		session.setAttribute("rowCount", rowCount);
+
+		sTemp = request.getParameter("tokenCount");
+		try {
+			maxTokenCount = Integer.valueOf(sTemp);
+		} catch (NumberFormatException e) {
+			maxTokenCount = 10;
+		}
+		session.setAttribute("maxTokenCount", maxTokenCount);
+
+		sTemp = request.getParameter("computerBehaviour");
+		try {
+			computerBehaviour = Integer.valueOf(sTemp);
+		} catch (NumberFormatException e) {
+			computerBehaviour = 1;
+		}
+		session.setAttribute("computerBehaviour", computerBehaviour);
+
+		sTemp = request.getParameter("suggestions");
+		suggestions = false;
+		if (sTemp != null && sTemp.trim().equalsIgnoreCase("yes")) {
+			suggestions = true;
+		}
+		session.setAttribute("suggestions", suggestions);
+
+		session.setAttribute("computerBehaviourText", getComputerBehaviourText(computerBehaviour));
+		session.setAttribute("suggestionsText", getSuggestionsText(suggestions));
+		dispatcher.forward(request, response);
+
+	}
+
+	protected void doPost(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		String action = request.getParameter("action");
+		HttpSession session = request.getSession();
+		if (session.isNew()) {
+			action = "start";
+		}
+
+		Integer row = -1;
+		Integer count = -1;
+		Nim nim;
+
+		Integer rowCount = (Integer) session.getAttribute("rowCount");
+		Integer maxTokenCount = (Integer) session.getAttribute("maxTokenCount");
+		Boolean suggestions = (Boolean) session.getAttribute("suggestions");
+		Integer computerBehaviour = (Integer) session.getAttribute("computerBehaviour");
+		BagForNimView bag = null;
+		Gson gson = new Gson();
+		String json;
+		if (action == null)
+			action = "unknown";
+
+		switch (action) {
+		case "start":
+			doGet(request, response);
+			break;
+		case "init":
+			nim = new Nim(rowCount, maxTokenCount);
+			session.setAttribute("nim", nim);
+			bag = new BagForNimView(action, suggestions, nim);
+			break;
+		case "humanmove":
+			nim = (Nim) session.getAttribute("nim");
+			row = Integer.valueOf(request.getParameter("row"));
+			count = Integer.valueOf(request.getParameter("count"));
+			nim.doMove(new NimMove(row, count));
+			bag = new BagForNimView(action, suggestions, nim);
+			break;
+		case "computermove":
+			nim = (Nim) session.getAttribute("nim");
+			NimMove move = null;
+			switch (computerBehaviour) {
+			case 1:
+				move = nim.suggestMove();
+				break;
+			case 2:
+				move = nim.randomMove();
+				break;
+			case 3:
+				move = nim.suggestBadMove();
+				break;
+			default:
+				move = nim.randomMove();
 			}
+
+			nim.doMove(move);
+			bag = new BagForNimView(action, suggestions, nim);
+			break;
 
 		default:
 			response.getWriter().append("Unhandeled Action...");
 
 		}
+		// nim = (Nim) session.getAttribute("nim");
+		// if (nim != null) {
+		// int[] rows = nim.getRows();
+		// for (int i=0;i<rows.length;i++) {
+		// System.out.println(i+1 + "->" + rows[i]);
+		// }
+		// }
+		if (bag != null) {
+			json = gson.toJson(bag);
+			response.setCharacterEncoding("UTF-8");
+			response.setContentType("application/json");
+			// System.out.println(json);
+			response.getWriter().write(json);
 
+		}
 	}
 
 }

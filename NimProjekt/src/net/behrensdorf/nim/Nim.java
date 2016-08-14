@@ -1,8 +1,7 @@
 package net.behrensdorf.nim;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
+import java.util.Stack;
 
 public class Nim {
 
@@ -13,6 +12,8 @@ public class Nim {
 	int[] rows;
 	int notEmptyRows;
 	int xorOverAllRows;
+	NimMove lastMove;
+	private Stack<NimMove> undoStack = new Stack<>();
 
 	private static final Random rnd = new Random();
 
@@ -50,21 +51,14 @@ public class Nim {
 			throw new NimException("Game is over");
 		}
 		NimMove move = null;
+		int pos = rnd.nextInt(rows.length);
 		if (!isWinSituation()) {
 			move = randomMove();
 		} else {
-			List<Integer> winMoves = new ArrayList<>();
 			int highestOneBit = Integer.highestOneBit(xorOverAllRows);
-			for (int i = 0; i < rows.length; i++) {
-				if ((rows[i] & highestOneBit) != 0) {
-					winMoves.add(i);
-				}
+			for (; (rows[pos] & highestOneBit) == 0; pos = ++pos % rows.length) {
 			}
-
-			int row = winMoves.get(rnd.nextInt(winMoves.size()));
-			int count = rows[row];
-			count ^= xorOverAllRows;
-			move = new NimMove(row, count);
+			move = new NimMove(pos, rows[pos] ^ xorOverAllRows);
 		}
 		return move;
 	}
@@ -74,23 +68,25 @@ public class Nim {
 			throw new NimException("Game is over");
 		}
 		NimMove move = null;
+		int pos = rnd.nextInt(rows.length);
+		int startPos = pos;
 		if (!isWinSituation()) {
 			move = randomMove();
 		} else {
-			List<Integer> looseMoves = new ArrayList<>();
+			boolean badMoveFound = true;
 			int highestOneBit = Integer.highestOneBit(xorOverAllRows);
-			for (int i = 0; i < rows.length; i++) {
-				if ((rows[i] > 0) && ((rows[i] & highestOneBit) == 0)) {
-					looseMoves.add(i);
+			for (; (rows[pos] & highestOneBit) != 0;) {
+				pos = ++pos % rows.length;
+				if (pos == startPos) {
+					badMoveFound = false;
+					break;
 				}
 			}
-			if (looseMoves.size() == 0) {
+
+			if (!badMoveFound) {
 				move = randomMove();
 			} else {
-				int row = looseMoves.get(rnd.nextInt(looseMoves.size()));
-				int count = rows[row];
-				count = rnd.nextInt(count);
-				move = new NimMove(row, count);
+				move = new NimMove(pos, rnd.nextInt(rows[pos]));
 			}
 		}
 		return move;
@@ -114,10 +110,11 @@ public class Nim {
 	// prüfen ob Zug gültig ist
 	// aktualisiere rows[]
 	// aktualisiere xorOverAllRows
-	// aktualisiere ggf. norEmptyRows
+	// aktualisiere ggf. notEmptyRows
 
 	// Das neue Bitmuster in xorOverAllRows erhält man
-	// durch
+	// durch xorOverAllRows xor mit alten Reihenwert und dann
+	// xorOverAllRows xor mit neuem Reihenwert
 
 	public Nim doMove(NimMove move) throws NimException {
 		if (isOver()) {
@@ -132,12 +129,59 @@ public class Nim {
 			notEmptyRows--;
 		}
 
+		undoStack.add(new NimMove(row, rows[row]));
+		lastMove=move;
+
 		xorOverAllRows ^= rows[row];
 		xorOverAllRows ^= count;
 
 		rows[row] = count;
-
 		return this;
+	}
+
+	public Nim undo() {
+		// nimmt den letzten Zug zurück
+		NimMove move = undoStack.pop();
+		int row = move.getRow();
+		int oldCount = rows[row];
+		int newCount = move.getCount();
+
+		if (oldCount == 0) {
+			notEmptyRows++;
+		}
+
+		xorOverAllRows ^= oldCount;
+		xorOverAllRows ^= newCount;
+
+		rows[row] = newCount;
+		return this;
+	}
+
+	public Nim undo(int nMoves) {
+		// nimmt die letzten n Züge zurück
+		if (nMoves > undoStack.size()) {
+			throw new NimException("Illegal undo count");
+		}
+		for (int i = 0; i < nMoves; i++) {
+			undo();
+		}
+		return this;
+	}
+
+	public Nim reset() {
+		// stellt die Ausgangssituation wieder her
+		while (!undoStack.empty()) {
+			undo(undoStack.size());
+		}
+		return this;
+	}
+
+	public NimMove getLastMove() {
+		return lastMove;
+	}
+
+	public NimMove getOldValueOflastMove() {
+		return undoStack.peek();
 	}
 
 	boolean isOver() {

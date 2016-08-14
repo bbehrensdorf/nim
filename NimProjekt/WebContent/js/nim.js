@@ -78,7 +78,7 @@ function fillNimRow(rowNum, rowValue) {
 
 function onError(data, status) {
 	// handle an error
-	// console.log(data, status);
+	console.log(data, status);
 	console.log("Da ist was Schiefgegangen");
 
 }
@@ -111,40 +111,40 @@ function modifyButtons() {
 
 function onSuccess(data, status) {
 	console.log("Data: " + data + "\nStatus: " + status);
-	var obj = JSON.parse(data);
 	var outMessage = "";
-	switch (obj.action) {
+	$("#computerId").html("Nur für Experten - Hashcode des Nim-Objekts: " + data.hashCode);
+	switch (data.action) {
 	case "init_nimtable":
-		rowValues = obj.values;
+		rowValues = data.values;
 		fillNimTable(rowValues);
-		outMessage = obj.message;
-		currentPlayer = obj.player;
+		outMessage = data.message;
+		currentPlayer = data.player;
 		setGameOver(false);
 		ready = true;
 		break;
 	case "confirm_humanmove":
-		outMessage = obj.message;
-		currentPlayer = obj.player;
-		rowValues[obj.move[0]]=obj.move[1];
+		outMessage = data.message;
+		currentPlayer = data.player;
+		rowValues[data.move[0]]=data.move[1];
 		modifyButtons();
-		if (obj.gameover) {
+		if (data.gameover) {
 			setGameOver(true);
 		}
 		ready = true;
 		break;
 	case "confirm_computermove":
-		outMessage = obj.message;
-		currentPlayer = obj.player;
-		rowValues[obj.move[0]]=obj.move[1];
-		fillNimRow(obj.move[0], obj.move[1]);
+		outMessage = data.message;
+		currentPlayer = data.player;
+		rowValues[data.move[0]]=data.move[1];
+		fillNimRow(data.move[0], data.move[1]);
 		modifyButtons();
-		if (obj.gameover) {
+		if (data.gameover) {
 			setGameOver(true);
 		}
 		ready = true;
 		break;
 	default:
-		outMessage = "so und so ...";
+		outMessage = "Fehler. Hier darf ich eigentlich gar nicht landen ...";
 	}
 	$("#message").html(outMessage);
 }
