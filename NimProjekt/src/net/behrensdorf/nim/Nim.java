@@ -75,7 +75,7 @@ public class Nim {
 		} else {
 			boolean badMoveFound = true;
 			int highestOneBit = Integer.highestOneBit(xorOverAllRows);
-			for (; (rows[pos] & highestOneBit) != 0;) {
+			for (; ((rows[pos] == 0) || ((rows[pos] != 0) && (rows[pos] & highestOneBit) != 0));) {
 				pos = ++pos % rows.length;
 				if (pos == startPos) {
 					badMoveFound = false;
@@ -86,6 +86,7 @@ public class Nim {
 			if (!badMoveFound) {
 				move = randomMove();
 			} else {
+				// System.out.println("Startpos: " + startPos + " Pos: " + pos + ", rows[pos]: " + rows[pos]);
 				move = new NimMove(pos, rnd.nextInt(rows[pos]));
 			}
 		}
@@ -130,7 +131,7 @@ public class Nim {
 		}
 
 		undoStack.add(new NimMove(row, rows[row]));
-		lastMove=move;
+		lastMove = move;
 
 		xorOverAllRows ^= rows[row];
 		xorOverAllRows ^= count;
